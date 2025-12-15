@@ -49,7 +49,7 @@ def build_system():
     parent_directory = os.path.dirname(current_directory)
     dbpath = os.path.join(parent_directory, "meta_data")
     m.db = Database(dbpath=dbpath)
-    m.fs.properties = WaterParameterBlock(solute_list=["tds", "tss"])
+    m.fs.properties = WaterParameterBlock(solute_list=["tds",])
 
     m.fs.chem_addition = FlowsheetBlock(dynamic=False)
 
@@ -69,6 +69,8 @@ def build_chem_addition(blk, chemical_name, prop_package=None) -> None:
         prop_package = m.fs.properties
 
     blk.feed = StateJunction(property_package=prop_package)
+    blk.feed.properties[0].flow_vol
+    blk.feed.properties[0].flow_vol
     blk.product = StateJunction(property_package=prop_package)
 
     blk.unit = ChemicalAdditionZO(
@@ -88,9 +90,9 @@ def build_chem_addition(blk, chemical_name, prop_package=None) -> None:
 
 
 def set_system_conditions(blk):
-    blk.feed.properties[0.0].flow_mass_comp["H2O"].fix(171.37)
-    blk.feed.properties[0.0].flow_mass_comp["tds"].fix(600)
-    blk.feed.properties[0.0].flow_mass_comp["tss"].fix(5.22e-6)
+    blk.feed.properties[0.0].flow_mass_comp["H2O"].fix(165.67)
+    blk.feed.properties[0.0].flow_mass_comp["tds"].fix(0.08318442395)
+    # blk.feed.properties[0.0].flow_mass_comp["tss"].fix(5.22e-6)
 
 
 def set_chem_addition_scaling(blk, calc_blk_scaling_factors=False):
@@ -116,6 +118,7 @@ def add_costing(m):
     m.fs.costing = ZeroOrderCosting(
         case_study_definition="src/wrd/meta_data/wrd_case_study.yaml"
     )
+    m.fs.costing.base_currency = pyunits.USD_2007
 
 
 def add_chem_addition_costing(m, blk, flowsheet_costing_block=None):
@@ -178,6 +181,7 @@ def main():
     m = build_system()
     set_system_conditions(m.fs.chem_addition)
     set_chem_addition_op_conditions(m.fs.chem_addition)
+    m.fs.chem_addition.unit.chemical_dosage[0].fix(10)
     set_chem_addition_scaling(m.fs.chem_addition, calc_blk_scaling_factors=True)
     init_chem_addition(m.fs.chem_addition)
     solve(m)
@@ -191,6 +195,35 @@ def main():
     solve(m)
     # m.fs.costing.display()
 
+    return m
+
 
 if __name__ == "__main__":
-    main()
+    m = main()
+    # m.fs.chem_addition.unit.display()
+    m.fs.costing.total_capital_cost.display()
+    m.fs.chem_addition.unit.costing.capital_cost.display()
+    blk = m.fs.chem_addition.unit
+    # chem_flow_mass = (
+    #     blk.chemical_dosage[0]
+    #     * blk.properties[0].flow_vol
+    #     / blk.ratio_in_solution
+    # )
+    # cfm = pyunits.convert(chem_flow_mass, to_units=pyunits.kg / pyunits.s)
+    # sizing_term = blk.chemical_flow_vol[0] / (
+    #     pyunits.gal / pyunits.day
+    # )
+    # cfv = pyunits.convert(blk.chemical_flow_vol[0], to_units=pyunits.m**3 / pyunits.s)
+    # st = pyunits.convert(sizing_term, to_units=pyunits.dimensionless)
+    # print(f"chemical dosage: {value(blk.chemical_dosage[0]):.3e} {pyunits.get_units(blk.chemical_dosage)}")
+    # print(f"Chemical Flow Mass: {value(cfm):.3e} kg/s")
+    # print(f"Chemical Flow vol: {value(cfv):.3e} m^3/s")
+    # print(f"sizing_term: {value(st):.3e} {pyunits.get_units(sizing_term)}")
+    # m.fs.costing.aggregate_flow_ammonia.display()
+    # x = pyunits.convert(m.fs.costing.aggregate_flow_ammonia, to_units=pyunits.kg / pyunits.s)
+    # print(f"Aggregate flow ammonia: {value(x):.3e} kg/s")
+    # m.fs.chem_addition.feed.properties[0].flow_mass_comp.display()
+    blk.properties[0].flow_vol.display()
+    # blk = m.fs.chem_addition.feed
+    # blk.properties[0].flow_vol.display()
+

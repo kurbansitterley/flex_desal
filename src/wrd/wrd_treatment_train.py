@@ -20,7 +20,7 @@ from idaes.models.unit_models import Product, Feed
 from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
 from watertap.core.zero_order_properties import WaterParameterBlock
 
-from wrd.components.chemical_addition import *
+from wrd.components._old.chemical_addition import *
 from wrd.components.translator_ZO_to_NaCl import TranslatorZOtoNaCl
 from wrd.components.translator_NaCl_to_ZO import TranslatorNaCltoZO
 from wrd.components.ro_system import *
