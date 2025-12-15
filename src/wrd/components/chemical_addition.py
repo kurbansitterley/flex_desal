@@ -45,6 +45,13 @@ from models import ChemicalAddition
 from wrd.utilities import load_config, get_config_value, get_config_file
 from srp.utils import touch_flow_and_conc
 
+__all__ = [
+    "build_chem_addition",
+    "set_chem_addition_op_conditions",
+    "add_chem_addition_costing",
+    "report_chem_addition",
+]
+
 solver = get_solver()
 
 
@@ -57,7 +64,6 @@ def build_system(chemical_name="ammonia"):
     current_script_path = os.path.abspath(__file__)
     current_directory = os.path.dirname(current_script_path)
     parent_directory = os.path.dirname(current_directory)
-    dbpath = os.path.join(parent_directory, "meta_data")
     m.fs.properties = NaClParameterBlock()
 
     m.fs.feed = Feed(property_package=m.fs.properties)
@@ -132,20 +138,6 @@ def set_inlet_conditions(m, Qin=2637, Cin=0.5, file="wrd_ro_inputs_8_19_21.yaml"
         },
         hold_state=True,
     )
-
-
-def set_system_conditions(blk):
-    blk.feed.properties[0.0].flow_mass_comp["H2O"].fix(171.37)
-    blk.feed.properties[0.0].flow_mass_comp["tds"].fix(600)
-    blk.feed.properties[0.0].flow_mass_comp["tss"].fix(5.22e-6)
-
-
-# def set_chem_addition_scaling(blk):
-
-#     set_scaling_factor(blk.unit.chemical_dosage, 0.1)
-#     set_scaling_factor(blk.unit.solution_density, 1e-3)
-#     set_scaling_factor(blk.unit.chemical_flow_vol, 1e6)
-#     set_scaling_factor(blk.unit.electricity, 1e4)
 
 
 def set_chem_addition_op_conditions(blk, dose=None):
@@ -236,10 +228,3 @@ def main():
 
 if __name__ == "__main__":
     m = main()
-    print(f"dof = {degrees_of_freedom(m)}")
-    m.fs.costing.total_capital_cost.display()
-    m.fs.chem_addition.unit.costing.capital_cost.display()
-    # m.fs.feed.properties[0].flow_mass_phase_comp.display()
-    # m.fs.costing.aggregate_flow_ammonia.display()
-    m.fs.chem_addition.feed.properties[0].flow_vol_phase.display()
-    # m.fs.costing.
