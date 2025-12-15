@@ -20,6 +20,7 @@ from pyomo.environ import (
 )
 from pyomo.common.config import ConfigValue, In
 
+import idaes.core.util.scaling as iscale
 from idaes.core import (
     declare_process_block_class,
 )
@@ -156,11 +157,11 @@ class ChemicalAdditionData(StateJunctionData):
         @self.Expression(
             doc=f"Mass flow rate of {self.config.chemical} added",
         )
-        def chemical_mass_flow(b):
+        def chemical_flow_mass(b):
             return pyunits.convert(
                 b.chemical_flow_vol
-                * b.solution_density
-                * b.ratio_in_solution,
+                * b.solution_density,
+                # * b.ratio_in_solution,
                 to_units=pyunits.kg / pyunits.s,
             )
 
@@ -180,7 +181,7 @@ class ChemicalAdditionData(StateJunctionData):
         )
         def eq_pumping_power(b):
             return b.pumping_power == pyunits.convert(
-                b.chemical_mass_flow
+                b.chemical_flow_mass
                 * b.pump_head
                 * Constants.acceleration_gravity
                 / b.pump_efficiency,
@@ -196,6 +197,36 @@ class ChemicalAdditionData(StateJunctionData):
     ):
 
         super().initialize_build(state_args, outlvl, solver, optarg)
+
+
+    def calculate_scaling_factors(self):
+        super().calculate_scaling_factors()
+
+        if iscale.get_scaling_factor(self.dose) is None:
+            iscale.set_scaling_factor(self.dose, 10)
+        
+        if iscale.get_scaling_factor(self.chemical_flow_vol) is None:
+            iscale.set_scaling_factor(self.chemical_flow_vol, 1)
+        
+        if iscale.get_scaling_factor(self.pumping_power) is None:
+            iscale.set_scaling_factor(self.pumping_power, 1)
+
+        # sf_dose = iscale.get_scaling_factor(
+        #     self.properties[0].conc_mass_phase_comp["Liq", "tds"]
+        # )
+        # iscale.set_scaling_factor(self.dose, sf_dose)
+
+        # sf_chem_flow_vol = iscale.get_scaling_factor(
+        #     self.properties[0].flow_vol_phase["Liq"]
+        # ) / (
+        #     self.ratio_in_solution * self.solution_density
+        # )
+        # iscale.set_scaling_factor(self.chemical_flow_vol, sf_chem_flow_vol)
+
+        # sf_pumping_power = iscale.get_scaling_factor(
+        #     self.properties[0].flow_mass_phase["Liq"]
+        # ) * Constants.acceleration_gravity * self.pump_head / self.pump_efficiency
+        # iscale.set_scaling_factor(self.pumping_power, sf_pumping_power)
 
     @property
     def default_costing_method(self):

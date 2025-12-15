@@ -62,7 +62,7 @@ def build_ammonia_cost_param_block(blk):
     blk.capital_A_parameter = pyo.Var(
         initialize=6699.1,
         doc="Ammonia addition capital cost A parameter",
-        units=pyo.units.USD_2020,
+        units=pyo.units.USD_2007,
     )
     blk.capital_b_parameter = pyo.Var(
         initialize=0.4219,
@@ -118,7 +118,7 @@ def build_ferric_chloride_cost_param_block(blk):
     blk.capital_A_parameter = pyo.Var(
         initialize=34153,
         doc="Ferric chloride addition capital cost A parameter",
-        units=pyo.units.USD_2020,
+        units=pyo.units.USD_2007,
     )
     blk.capital_b_parameter = pyo.Var(
         initialize=0.319,
@@ -146,7 +146,7 @@ def build_hydrochloric_acid_cost_param_block(blk):
     blk.capital_A_parameter = pyo.Var(
         initialize=900.97,
         doc="Hydrochloric acid addition capital cost A parameter",
-        units=pyo.units.USD_2020,
+        units=pyo.units.USD_2007,
     )
     blk.capital_b_parameter = pyo.Var(
         initialize=0.6179,
@@ -174,7 +174,7 @@ def build_lime_cost_param_block(blk):
     blk.capital_A_parameter = pyo.Var(
         initialize=12985,
         doc="Lime addition capital cost A parameter",
-        units=pyo.units.USD_2020,
+        units=pyo.units.USD_2007,
     )
     blk.capital_b_parameter = pyo.Var(
         initialize=0.5901,
@@ -230,7 +230,7 @@ def build_soda_ash_cost_param_block(blk):
     blk.capital_A_parameter = pyo.Var(
         initialize=34153,
         doc="Soda ash addition capital cost A parameter",
-        units=pyo.units.USD_2020,
+        units=pyo.units.USD_2007,
     )
     blk.capital_b_parameter = pyo.Var(
         initialize=0.319,
@@ -348,8 +348,23 @@ def cost_chemical_addition(blk):
         build_rule=chem_build_rule, parameter_block_name=chemical
     )
     def cost_chem_addition(blk):
+        # ion_exchange_params = blk.costing_package.ion_exchange
+        chem_addition_param_blk = blk.costing_package.find_component(f"{chemical}")
         make_capital_cost_var(blk)
         blk.costing_package.add_cost_factor(blk, "TPEC")
-        make_fixed_operating_cost_var(blk)
+        chem_flow_mass_dim = pyo.units.convert(
+            blk.unit_model.chemical_flow_mass/(pyo.units.lb / pyo.units.day), to_units=pyo.units.dimensionless
+        )
+        # chem_flow_mass_dim = pyo.units.convert(
+        #     blk.unit_model.chemical_flow_vol/(pyo.units.gal / pyo.units.day), to_units=pyo.units.dimensionless
+        # )
+
+        blk.capital_cost_constraint = pyo.Constraint(
+            expr=blk.capital_cost
+            == blk.cost_factor * pyo.units.convert(chem_addition_param_blk.capital_A_parameter
+            * chem_flow_mass_dim ** chem_addition_param_blk.capital_b_parameter, to_units=blk.costing_package.base_currency)
+        )
+        blk.costing_package.cost_flow(blk.unit_model.pumping_power, "electricity")
+        blk.costing_package.cost_flow(blk.unit_model.chemical_flow_mass, chemical)
 
     cost_chem_addition(blk)
