@@ -20,36 +20,42 @@ from idaes.models.unit_models import Product, Feed
 from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
 from watertap.core.zero_order_properties import WaterParameterBlock
 
-from wrd.components._old.chemical_addition import *
+from wrd.components.chemical_addition import *
 from wrd.components.translator_ZO_to_NaCl import TranslatorZOtoNaCl
 from wrd.components.translator_NaCl_to_ZO import TranslatorNaCltoZO
 from wrd.components.ro_system import *
+from wrd.components.ro_system_new import build_ro_system
 from wrd.components.decarbonator import *
 from wrd.components.uv_aop import *
 from wrd.components.UF_feed_pumps import *
 from wrd.components.pump import *
 from wrd.components.UF_separator import *
 from wrd.utilities import load_config, get_config_file, get_config_value
+from srp.utils import touch_flow_and_conc
 
-
-def build_wrd_system(number_stages=3, **kwargs):
+def build_wrd_system(num_stages=3, **kwargs):
     m = ConcreteModel()
     m.fs = FlowsheetBlock(dynamic=False)
 
     # Get working directory path
-    dir_path = os.path.dirname(os.path.abspath(__file__))
-    m.db = Database(dbpath=os.path.join(dir_path, "meta_data"))
+    # dir_path = os.path.dirname(os.path.abspath(__file__))
+    # m.db = Database(dbpath=os.path.join(dir_path, "meta_data"))
 
     config_file_name = get_config_file("wrd_feed_flow.yaml")
     m.fs.config_data = load_config(config_file_name)
 
     # ZO Properties
-    m.fs.properties = WaterParameterBlock(solute_list=["tds"])
+    # m.fs.properties = WaterParameterBlock(solute_list=["tds"])
     # RO properties
-    m.fs.ro_properties = NaClParameterBlock()
+    m.fs.properties = NaClParameterBlock()
 
     # Add units
     m.fs.feed = Feed(property_package=m.fs.properties)
+    m.fs.product = Product(property_package=m.fs.properties)
+    m.fs.disposal = Product(property_package=m.fs.properties)
+    touch_flow_and_conc(m.fs.feed)
+    touch_flow_and_conc(m.fs.product)
+    touch_flow_and_conc(m.fs.disposal)
 
     # Pre- UF Treatment chemical addition units (read from metadata)
     m.fs.pre_treat_chem_list = [
@@ -64,76 +70,85 @@ def build_wrd_system(number_stages=3, **kwargs):
             m.fs.find_component(chem_name + "_addition"), chem_name, m.fs.properties
         )
 
+    # assert False
+
     # Translator block between ZO to RO property packages # may want to rename ro_properties because now it is most of the flowsheet, minus pre and post chem addition
-    m.fs.translator_ZO_to_RO = TranslatorZOtoNaCl(
-        inlet_property_package=m.fs.properties,
-        outlet_property_package=m.fs.ro_properties,
-        has_phase_equilibrium=False,
-        outlet_state_defined=True,
-    )
+    # m.fs.translator_ZO_to_RO = TranslatorZOtoNaCl(
+    #     inlet_property_package=m.fs.properties,
+    #     outlet_property_package=m.fs.ro_properties,
+    #     has_phase_equilibrium=False,
+    #     outlet_state_defined=True,
+    # )
 
     # UF Pumps
     m.fs.UF_pumps = FlowsheetBlock(dynamic=False)
     # build_UF_pumps(
     #     m.fs.UF_pumps, m.fs.ro_properties, split_fractions=[1]
     # )  # could move split_fractions in yaml?
-    build_pump(m.fs.UF_pumps, prop_package=m.fs.ro_properties)
+    build_pump(m.fs.UF_pumps, prop_package=m.fs.properties)
 
     # UF unit
     m.fs.UF = FlowsheetBlock(dynamic=False)
     # want to rename separator to UF
     build_separator(
-        blk=m.fs.UF, prop_package=m.fs.ro_properties, outlet_list=["to_RO", "to_waste"]
+        blk=m.fs.UF, prop_package=m.fs.properties, outlet_list=["to_RO", "to_waste"]
     )
 
     # RO unit
-    m.fs.ro_system = FlowsheetBlock(dynamic=False)
-    number_stages = 3
-    if "number_stages" in kwargs:
-        number_stages = kwargs["number_stages"]
-    build_wrd_ro_system(
-        m.fs.ro_system,
-        prop_package=m.fs.ro_properties,
-        number_stages=number_stages,
+    # m.fs.ro_system = FlowsheetBlock(dynamic=False)
+    # number_stages = 3
+    # if "number_stages" in kwargs:
+    #     number_stages = kwargs["number_stages"]
+    build_ro_system(
+        m,
+        prop_package=m.fs.properties,
+        num_stages=num_stages,
     )
 
     # UV AOP - Still using ro_properties
     m.fs.UV_aop = FlowsheetBlock(dynamic=False)
-    build_uv_aop(m.fs.UV_aop, prop_package=m.fs.ro_properties)
+    build_uv_aop(m.fs.UV_aop, prop_package=m.fs.properties)
 
     # Decarbonator - Still using ro_properties
     m.fs.decarbonator = FlowsheetBlock(dynamic=False)
-    build_decarbonator(m.fs.decarbonator, prop_package=m.fs.ro_properties)
+    build_decarbonator(m.fs.decarbonator, prop_package=m.fs.properties)
+    # assert False
 
-    m.fs.translator_RO_to_ZO = TranslatorNaCltoZO(
-        inlet_property_package=m.fs.ro_properties,
-        outlet_property_package=m.fs.properties,
-        has_phase_equilibrium=False,
-        outlet_state_defined=True,
-    )
+    # m.fs.translator_RO_to_ZO = TranslatorNaCltoZO(
+    #     inlet_property_package=m.fs.ro_properties,
+    #     outlet_property_package=m.fs.properties,
+    #     has_phase_equilibrium=False,
+    #     outlet_state_defined=True,
+    # )
 
     # Post-Treatment chemical addition units - ZO Models
     m.fs.post_treat_chem_list = [
-        "calcium_hydroxide",
-        "sodium_hydroxide",
-        "sodium_hypochlorite_post",
+        # "calcium_hydroxide",
+        "caustic",
+        # "sodium_hypochlorite",
         "sodium_bisulfite",
     ]
 
     for chem_name in m.fs.post_treat_chem_list:
-        m.fs.add_component(chem_name + "_addition", FlowsheetBlock(dynamic=False))
-        build_chem_addition(
-            m.fs.find_component(chem_name + "_addition"), chem_name, m.fs.properties
-        )
+        if chem_name == "sodium_hypochlorite":
+            m.fs.add_component(chem_name + "_addition_post", FlowsheetBlock(dynamic=False))
+            build_chem_addition(
+                m.fs.find_component(chem_name + "_addition_post"), chem_name, m.fs.properties
+            )
+        else:
+            m.fs.add_component(chem_name + "_addition", FlowsheetBlock(dynamic=False))
+            build_chem_addition(
+                m.fs.find_component(chem_name + "_addition"), chem_name, m.fs.properties
+            )
     # Combined chemical list for operating conditions, scaling, and costing(?)
-    m.fs.chemical_list = list(m.fs.pre_treat_chem_list) + list(
-        m.fs.post_treat_chem_list
-    )
+    # m.fs.chemical_list = list(m.fs.pre_treat_chem_list) + list(
+    #     m.fs.post_treat_chem_list
+    # )
 
-    m.fs.product = Product(property_package=m.fs.properties)
-    m.fs.brine = Product(
-        property_package=m.fs.ro_properties
-    )  # directly from ro, so needs same prop model
+    # m.fs.product = Product(property_package=m.fs.properties)
+    # m.fs.brine = Product(
+    #     property_package=m.fs.ro_properties
+    # )  # directly from ro, so needs same prop model
 
     return m
 
@@ -387,28 +402,28 @@ def solve(model, solver=None, tee=True, raise_on_failure=True):
 
 def main(number_stages=3, date="8_19_21"):
     m = build_wrd_system(number_stages=number_stages, date=date)
-    assert_units_consistent(m)
-    add_wrd_connections(m)
-    print(f"{degrees_of_freedom(m)} degrees of freedom after build")
-    set_wrd_inlet_conditions(m)
-    set_wrd_operating_conditions(m)
-    print(f"{degrees_of_freedom(m)} degrees of freedom after setting op conditions")
-    set_wrd_system_scaling(m)
-    calculate_scaling_factors(m)
-    initialize_wrd_system(m)
-    try:
-        results = solve(m)
-        assert_optimal_termination(results)
-    except:
-        print_infeasible_constraints(m)
-        print("\n--------- Failed to Solve ---------\n")
+    # assert_units_consistent(m)
+    # add_wrd_connections(m)
+    # print(f"{degrees_of_freedom(m)} degrees of freedom after build")
+    # set_wrd_inlet_conditions(m)
+    # set_wrd_operating_conditions(m)
+    # print(f"{degrees_of_freedom(m)} degrees of freedom after setting op conditions")
+    # set_wrd_system_scaling(m)
+    # calculate_scaling_factors(m)
+    # initialize_wrd_system(m)
+    # try:
+    #     results = solve(m)
+    #     assert_optimal_termination(results)
+    # except:
+    #     print_infeasible_constraints(m)
+    #     print("\n--------- Failed to Solve ---------\n")
     return m
 
 
 if __name__ == "__main__":
     number_stages = 3
     date = "8_19_21"
-    main(number_stages=number_stages, date=date)
+    m = main(number_stages=number_stages, date=date)
     # m = build_wrd_system(number_stages=number_stages, date=date)
     # add_connections(m)
     # set_wrd_inlet_conditions(m)
