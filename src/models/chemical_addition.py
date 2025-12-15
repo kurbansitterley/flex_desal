@@ -140,7 +140,7 @@ class ChemicalAdditionData(StateJunctionData):
             doc=f"Dose of {self.config.chemical} addition",
         )
 
-        self.chemical_flow_vol = Var(
+        self.chemical_soln_flow_vol = Var(
             initialize=1,
             units=pyunits.m**3 / pyunits.s,
             bounds=(0, None),
@@ -158,18 +158,28 @@ class ChemicalAdditionData(StateJunctionData):
             doc=f"Mass flow rate of {self.config.chemical} added",
         )
         def chemical_flow_mass(b):
+            # (g chem / s) = (m3 soln / s) * (g soln / m3 soln) * (g chem / g soln)
             return pyunits.convert(
-                b.chemical_flow_vol
-                * b.solution_density,
-                # * b.ratio_in_solution,
+                b.chemical_soln_flow_vol * b.solution_density * b.ratio_in_solution,
+                to_units=pyunits.kg / pyunits.s,
+            )
+
+        @self.Expression(
+            doc=f"Mass flow rate of {self.config.chemical} solution",
+        )
+        def chemical_soln_flow_mass(b):
+            return pyunits.convert(
+                b.chemical_flow_mass / b.ratio_in_solution,
                 to_units=pyunits.kg / pyunits.s,
             )
 
         @self.Constraint(
-            doc=f"Chemical dosage constraint for {self.config.chemical} addition",
+            doc=f"Chemical dosage constraint for {self.config.chemical} solution addition",
         )
-        def eq_chemical_flow_vol(b):
-            return b.chemical_flow_vol == pyunits.convert(
+        # volumetric flow for chemical solution
+        def eq_chemical_soln_flow_vol(b):
+            # (m3 soln / s) = ((g chem / m3 water) * (m3 water / s)) / ((g chem / g soln) * (g soln / m3 soln))
+            return b.chemical_soln_flow_vol == pyunits.convert(
                 b.dose
                 * b.properties[0].flow_vol_phase["Liq"]
                 / (b.ratio_in_solution * b.solution_density),
@@ -198,16 +208,15 @@ class ChemicalAdditionData(StateJunctionData):
 
         super().initialize_build(state_args, outlvl, solver, optarg)
 
-
     def calculate_scaling_factors(self):
         super().calculate_scaling_factors()
 
         if iscale.get_scaling_factor(self.dose) is None:
             iscale.set_scaling_factor(self.dose, 10)
-        
-        if iscale.get_scaling_factor(self.chemical_flow_vol) is None:
-            iscale.set_scaling_factor(self.chemical_flow_vol, 1)
-        
+
+        if iscale.get_scaling_factor(self.chemical_soln_flow_vol) is None:
+            iscale.set_scaling_factor(self.chemical_soln_flow_vol, 1)
+
         if iscale.get_scaling_factor(self.pumping_power) is None:
             iscale.set_scaling_factor(self.pumping_power, 1)
 
@@ -221,7 +230,7 @@ class ChemicalAdditionData(StateJunctionData):
         # ) / (
         #     self.ratio_in_solution * self.solution_density
         # )
-        # iscale.set_scaling_factor(self.chemical_flow_vol, sf_chem_flow_vol)
+        # iscale.set_scaling_factor(self.chemical_soln_flow_vol, sf_chem_flow_vol)
 
         # sf_pumping_power = iscale.get_scaling_factor(
         #     self.properties[0].flow_mass_phase["Liq"]
