@@ -55,7 +55,7 @@ __all__ = [
 solver = get_solver()
 
 
-def build_system(chemical_name="ammonia"):
+def build_system(chemical_name=None):
 
     m = ConcreteModel()
     m.fs = FlowsheetBlock(dynamic=False)
@@ -99,9 +99,11 @@ def build_system(chemical_name="ammonia"):
 def build_chem_addition(blk, chemical_name=None, prop_package=None):
 
     if chemical_name is None:
-        raise ValueError("chemical_name must be provided to build_chem_addition")
+        # raise ValueError("chemical_name must be provided to build_chem_addition")
+        name = "default_chemical"
+    else:
+        name = chemical_name.replace("_", " ").upper()
 
-    name = chemical_name.replace("_", " ").upper()
     print(f'\n{f"=======> BUILDING {name} ADDITION UNIT <=======":^60}\n')
 
     m = blk.model()
@@ -148,14 +150,15 @@ def set_chem_addition_op_conditions(blk, dose=None):
     blk.unit.dose.fix(dose)
 
 
-def add_chem_addition_costing(blk, flowsheet_costing_block=None):
+def add_chem_addition_costing(blk, flowsheet_costing_block=None, cost_capital=False):
 
     if flowsheet_costing_block is None:
         m = blk.model()
         flowsheet_costing_block = m.fs.costing
 
     blk.unit.costing = UnitModelCostingBlock(
-        flowsheet_costing_block=flowsheet_costing_block
+        flowsheet_costing_block=flowsheet_costing_block,
+        costing_method_arguments={"cost_capital": cost_capital}
     )
 
 

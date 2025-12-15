@@ -18,6 +18,33 @@ from watertap.costing.util import (
 )
 
 
+def build_default_chem_cost_param_block(blk):
+
+    blk.cost = pyo.Var(
+        initialize=1,
+        doc="Default chem cost",
+        units=pyo.units.USD_2020 / pyo.units.kg,
+    )
+    blk.purity = pyo.Var(
+        initialize=1,
+        doc="Default chem purity",
+        units=pyo.units.dimensionless,
+    )
+    blk.capital_A_parameter = pyo.Var(
+        initialize=15408,
+        doc="Default chem addition capital cost A parameter",
+        units=pyo.units.USD_2007,
+    )
+    blk.capital_b_parameter = pyo.Var(
+        initialize=0.5479,
+        doc="Default chem addition capital cost b parameter",
+        units=pyo.units.dimensionless,
+    )
+
+    costing = blk.parent_block()
+    costing.register_flow_type("default", blk.cost / blk.purity)
+
+
 def build_alum_cost_param_block(blk):
     # CatCost v 1.1.1
     # Aluminum sulphate, 5-lb. bgs., c.l., works, frt. equald., 17% Al203, W. Coast
@@ -323,9 +350,10 @@ def build_sulfuric_acid_cost_param_block(blk):
     costing.register_flow_type("sulfuric_acid", blk.cost / blk.purity)
 
 
-def cost_chemical_addition(blk):
+def cost_chemical_addition(blk, cost_capital=False):
 
     chem_build_rule_dict = {
+        "default": build_default_chem_cost_param_block,
         "ammonia": build_ammonia_cost_param_block,
         "lime": build_lime_cost_param_block,
         "ferric_chloride": build_ferric_chloride_cost_param_block,
@@ -350,20 +378,24 @@ def cost_chemical_addition(blk):
     def cost_chem_addition(blk):
         # ion_exchange_params = blk.costing_package.ion_exchange
         chem_addition_param_blk = blk.costing_package.find_component(f"{chemical}")
-        make_capital_cost_var(blk)
-        blk.costing_package.add_cost_factor(blk, "TPEC")
-        chem_flow_mass_dim = pyo.units.convert(
-            blk.unit_model.chemical_flow_mass/(pyo.units.lb / pyo.units.day), to_units=pyo.units.dimensionless
-        )
-        # chem_flow_mass_dim = pyo.units.convert(
-        #     blk.unit_model.chemical_flow_vol/(pyo.units.gal / pyo.units.day), to_units=pyo.units.dimensionless
-        # )
+        if cost_capital:
 
-        blk.capital_cost_constraint = pyo.Constraint(
-            expr=blk.capital_cost
-            == blk.cost_factor * pyo.units.convert(chem_addition_param_blk.capital_A_parameter
-            * chem_flow_mass_dim ** chem_addition_param_blk.capital_b_parameter, to_units=blk.costing_package.base_currency)
-        )
+            make_capital_cost_var(blk)
+            blk.costing_package.add_cost_factor(blk, "TPEC")
+            chem_flow_mass_dim = pyo.units.convert(
+                blk.unit_model.chemical_flow_mass / (pyo.units.lb / pyo.units.day),
+                to_units=pyo.units.dimensionless,
+            )
+
+            blk.capital_cost_constraint = pyo.Constraint(
+                expr=blk.capital_cost
+                == blk.cost_factor
+                * pyo.units.convert(
+                    chem_addition_param_blk.capital_A_parameter
+                    * chem_flow_mass_dim**chem_addition_param_blk.capital_b_parameter,
+                    to_units=blk.costing_package.base_currency,
+                )
+            )
         blk.costing_package.cost_flow(blk.unit_model.pumping_power, "electricity")
         blk.costing_package.cost_flow(blk.unit_model.chemical_flow_mass, chemical)
 

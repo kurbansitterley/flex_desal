@@ -35,7 +35,9 @@ from costing.chemical_addition import cost_chemical_addition
 __author__ = "Kurban Sitterley"
 
 solution_dens_dict = {
+    "default": 1000,
     "ammonia": 900,
+    "ammonium_sulfate": 1230,
     "alum": 1360,
     "anti_scalant": 1021,
     "caustic": 1540,
@@ -44,13 +46,16 @@ solution_dens_dict = {
     "sodium_hypochlorite": 1300,
     "lime": 1250,
     "polymer": 1100,
+    "scale_inhibitor": 1000,
     "soda_ash": 2200,
     "sodium_bisulfite": 1480,
     "sulfuric_acid": 1781,
 }
 
 ratio_in_solution_dict = {
+    "default": 1,
     "ammonia": 0.3,
+    "ammonium_sulfate": 0.4,
     "alum": 0.5,
     "anti_scalant": 1,
     "caustic": 0.5,
@@ -59,6 +64,7 @@ ratio_in_solution_dict = {
     "sodium_hypochlorite": 1,
     "lime": 0.5,
     "polymer": 0.1,
+    "scale_inhibitor": 1,
     "soda_ash": 1,
     "sodium_bisulfite": 1,
     "sulfuric_acid": 1,
@@ -66,6 +72,7 @@ ratio_in_solution_dict = {
 
 
 class ChemicalType(StrEnum):
+    default = "default"
     ammonia = "ammonia"
     alum = "alum"
     anti_scalant = "anti_scalant"
@@ -107,9 +114,7 @@ class ChemicalAdditionData(StateJunctionData):
         super().build()
 
         if self.config.chemical is None:
-            raise ConfigurationError(
-                f"ChemicalAddition unit {self.name} must be provided a chemical type."
-            )
+            self.config.chemical = ChemicalType.default
 
         self.solution_density = Param(
             initialize=solution_dens_dict[self.config.chemical],
