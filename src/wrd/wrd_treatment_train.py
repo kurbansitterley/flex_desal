@@ -27,6 +27,7 @@ from wrd.components.ro_system import *
 from wrd.components.decarbonator import *
 from wrd.components.uv_aop import *
 from wrd.components.UF_feed_pumps import *
+from wrd.components.pump import *
 from wrd.components.UF_separator import *
 from wrd.utilities import load_config, get_config_file, get_config_value
 
@@ -73,9 +74,10 @@ def build_wrd_system(number_stages=3, **kwargs):
 
     # UF Pumps
     m.fs.UF_pumps = FlowsheetBlock(dynamic=False)
-    build_UF_pumps(
-        m.fs.UF_pumps, m.fs.ro_properties, split_fractions=[1]
-    )  # could move split_fractions in yaml?
+    # build_UF_pumps(
+    #     m.fs.UF_pumps, m.fs.ro_properties, split_fractions=[1]
+    # )  # could move split_fractions in yaml?
+    build_pump(m.fs.UF_pumps, prop_package=m.fs.ro_properties)
 
     # UF unit
     m.fs.UF = FlowsheetBlock(dynamic=False)
