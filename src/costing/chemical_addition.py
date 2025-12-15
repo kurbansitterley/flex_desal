@@ -100,6 +100,31 @@ def build_ammonia_cost_param_block(blk):
     costing = blk.parent_block()
     costing.register_flow_type("ammonia", blk.cost / blk.purity)
 
+def build_calcium_hydroxide_param_block(blk):
+
+    blk.cost = pyo.Var(
+        initialize=2.3,
+        doc="Calcium hydroxide cost",
+        units=pyo.units.USD_2020 / pyo.units.kg,
+    )
+    blk.purity = pyo.Var(
+        initialize=1,  # assumed
+        doc="Calcium hydroxide purity",
+        units=pyo.units.dimensionless,
+    )
+    blk.capital_A_parameter = pyo.Var(
+        initialize=2262.8,
+        doc="Calcium hydroxide addition capital cost A parameter",
+        units=pyo.units.USD_2007,
+    )
+    blk.capital_b_parameter = pyo.Var(
+        initialize=0.6195,
+        doc="Calcium hydroxide addition capital cost b parameter",
+        units=pyo.units.dimensionless,
+    )
+
+    costing = blk.parent_block()
+    costing.register_flow_type("caustic_soda", blk.cost / blk.purity)
 
 def build_caustic_cost_param_block(blk):
     # CatCost v 1.1.1
@@ -376,10 +401,8 @@ def cost_chemical_addition(blk, cost_capital=False):
         build_rule=chem_build_rule, parameter_block_name=chemical
     )
     def cost_chem_addition(blk):
-        # ion_exchange_params = blk.costing_package.ion_exchange
         chem_addition_param_blk = blk.costing_package.find_component(f"{chemical}")
         if cost_capital:
-
             make_capital_cost_var(blk)
             blk.costing_package.add_cost_factor(blk, "TPEC")
             chem_flow_mass_dim = pyo.units.convert(

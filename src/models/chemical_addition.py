@@ -40,6 +40,7 @@ solution_dens_dict = {
     "ammonium_sulfate": 1230,
     "alum": 1360,
     "anti_scalant": 1021,
+    "calcium_hydroxide": 1300,
     "caustic": 1540,
     "ferric_chloride": 1460,
     "hydrochloric_acid": 1490,
@@ -59,6 +60,7 @@ ratio_in_solution_dict = {
     "alum": 0.5,
     "anti_scalant": 1,
     "caustic": 0.5,
+    "calcium_hydroxide": 0.35,
     "ferric_chloride": 0.42,
     "hydrochloric_acid": 0.37,
     "sodium_hypochlorite": 1,
@@ -74,6 +76,7 @@ ratio_in_solution_dict = {
 class ChemicalType(StrEnum):
     default = "default"
     ammonia = "ammonia"
+    ammonium_sulfate = "ammonium_sulfate"
     alum = "alum"
     anti_scalant = "anti_scalant"
     caustic = "caustic"
@@ -84,6 +87,7 @@ class ChemicalType(StrEnum):
     hypochlorite = sodium_hypochlorite
     lime = "lime"
     polymer = "polymer"
+    scale_inhibitor = "scale_inhibitor"
     sodium_bisulfite = "sodium_bisulfite"
     sodium_hydroxide = "sodium_hydroxide"
     soda_ash = "soda_ash"
