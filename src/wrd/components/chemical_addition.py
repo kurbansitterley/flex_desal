@@ -174,7 +174,7 @@ def report_chem_addition(blk, w=30):
         f'{f"{chem_name} Mass Flow":<{w}s}{value(blk.unit.chemical_flow_mass):<{w}.3e}{f"{pyunits.get_units(blk.unit.chemical_flow_mass)}"}'
     )
     print(
-        f'{f"{chem_name} Vol. Flow":<{w}s}{value(blk.unit.chemical_flow_vol):<{w}.3e}{f"{pyunits.get_units(blk.unit.chemical_flow_vol)}"}'
+        f'{f"{chem_name} Vol. Flow":<{w}s}{value(blk.unit.chemical_soln_flow_vol):<{w}.3e}{f"{pyunits.get_units(blk.unit.chemical_soln_flow_vol)}"}'
     )
     print(
         f'{f"{chem_name} Pumping Power":<{w}s}{value(blk.unit.pumping_power):<{w}.3e}{f"{pyunits.get_units(blk.unit.pumping_power)}"}'
