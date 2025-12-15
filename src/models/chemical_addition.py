@@ -28,6 +28,7 @@ from idaes.core.util.misc import StrEnum
 from idaes.core.util.constants import Constants
 import idaes.logger as idaeslog
 from idaes.models.unit_models.statejunction import StateJunctionData
+from idaes.core.util.exceptions import ConfigurationError
 
 from costing.chemical_addition import cost_chemical_addition
 
@@ -104,6 +105,11 @@ class ChemicalAdditionData(StateJunctionData):
     def build(self):
 
         super().build()
+
+        if self.config.chemical is None:
+            raise ConfigurationError(
+                f"ChemicalAddition unit {self.name} must be provided a chemical type."
+            )
 
         self.solution_density = Param(
             initialize=solution_dens_dict[self.config.chemical],
