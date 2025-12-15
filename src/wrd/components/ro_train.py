@@ -48,6 +48,14 @@ from wrd.components.ro import *
 from wrd.components.ro_skid import *
 from srp.utils import touch_flow_and_conc
 
+__all__ = [
+    "build_ro_train",
+    "set_ro_train_op_conditions",
+    "set_ro_train_scaling",
+    "initialize_ro_train",
+    "report_ro_train",
+]
+
 
 def build_system():
 
@@ -78,6 +86,13 @@ def build_system():
     )
 
     TransformationFactory("network.expand_arcs").apply_to(m)
+
+    m.fs.properties.set_default_scaling(
+        "flow_mass_phase_comp", 1e-1, index=("Liq", "H2O")  # changed from 1
+    )
+    m.fs.properties.set_default_scaling(
+        "flow_mass_phase_comp", 1e2, index=("Liq", "NaCl")
+    )
 
     return m
 
@@ -131,21 +146,21 @@ def build_ro_train(
     )
 
     for i in blk.stages:
-        print(f"Building skid {i}\n\n\n")
+        # print(f"Building skid {i}\n\n\n")
         build_ro_skid(blk.skids[i], stage_num=i, file=file, prop_package=prop_package)
     for i in blk.stages:
-        print(i)
-        print()
+        # print(i)
+        # print()
         if i == blk.stages.first():
             ain = Arc(source=blk.feed.outlet, destination=blk.skids[i].feed.inlet)
             blk.add_component(f"feed_to_skid_{i}", ain)
-            print(f"feed_to_skid_{i}")
+            # print(f"feed_to_skid_{i}")
             aout = Arc(
                 source=blk.skids[i].disposal.outlet,
                 destination=blk.skids[i + 1].feed.inlet,
             )
             blk.add_component(f"skid_{i}_to_skid_{i+1}", aout)
-            print(f"skid_{i}_to_skid_{i+1}")
+            # print(f"skid_{i}_to_skid_{i+1}")
         elif i == blk.stages.last():
             # aout_prod = Arc(
             #     source=blk.skids[i].product.outlet, destination=blk.product.inlet
@@ -156,20 +171,20 @@ def build_ro_train(
                 source=blk.skids[i].disposal.outlet, destination=blk.disposal.inlet
             )
             blk.add_component(f"skid_{i}_to_brine", aout_brine)
-            print(f"skid_{i}_to_brine")
+            # print(f"skid_{i}_to_brine")
         else:
             aout = Arc(
                 source=blk.skids[i].disposal.outlet,
                 destination=blk.skids[i + 1].feed.inlet,
             )
             blk.add_component(f"skid_{i}_to_skid_{i+1}", aout)
-            print(f"skid_{i}_to_skid_{i+1}")
+            # print(f"skid_{i}_to_skid_{i+1}")
         mix_in = blk.mixer.find_component(f"skid_{i}_to_product")
         mix_arc = Arc(source=blk.skids[i].product.outlet, destination=mix_in)
         # ap = Arc(
         #     source=blk.skids[i].product.outlet,
         blk.add_component(f"skid_{i}_to_product", mix_arc)
-        print(f"skid_{i}_to_mixer")
+        # print(f"skid_{i}_to_mixer")
 
     blk.mixer_to_product = Arc(source=blk.mixer.outlet, destination=blk.product.inlet)
 
@@ -186,7 +201,7 @@ def set_ro_train_op_conditions(blk):
 
     for i in blk.stages:
         set_ro_skid_op_conditions(blk.skids[i])
-        print(f"dof skid {i}: {degrees_of_freedom(blk.skids[i])}")
+        # print(f"dof skid {i}: {degrees_of_freedom(blk.skids[i])}")
 
     blk.mixer.outlet.pressure[0].fix(101325)
 
@@ -228,8 +243,11 @@ def initialize_system(m):
     m.fs.brine.initialize()
 
 
-def report_ro_train(blk, w=30):
-    title = "RO Train Report"
+def report_ro_train(blk, train_num=None, w=30):
+    if train_num is None:
+        title = "RO Train Report"
+    else:
+        title = f"RO Train {train_num} Report"
     side = int(((3 * w) - len(title)) / 2) - 1
     header = "=" * side + f" {title} " + "=" * side
     print(f"\n{header}\n")
@@ -315,12 +333,6 @@ def report_ro_train(blk, w=30):
 
 if __name__ == "__main__":
     m = build_system()
-    m.fs.properties.set_default_scaling(
-        "flow_mass_phase_comp", 1e-1, index=("Liq", "H2O")  # changed from 1
-    )
-    m.fs.properties.set_default_scaling(
-        "flow_mass_phase_comp", 1e2, index=("Liq", "NaCl")
-    )
     set_ro_train_scaling(m.fs.ro_train)
     m.fs.feed.properties[0].conc_mass_phase_comp
     m.fs.feed.properties[0].flow_vol_phase

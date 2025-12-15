@@ -181,10 +181,10 @@ def initialize_ro_skid(blk):
 
 
 def report_ro_skid(blk, w=30):
-    title = "RO Skid Report"
-    side = int(((3 * w) - len(title)) / 2) - 1
-    header = "=" * side + f" {title} " + "=" * side
-    print(f"\n{header}\n")
+    # title = "RO Skid Report"
+    # side = int(((3 * w) - len(title)) / 2) - 1
+    # header = "=" * side + f" {title} " + "=" * side
+    # print(f"\n{header}\n")
     report_pump(blk.pump, w=w)
     report_ro(blk.ro, w=w)
     # blk.pump.report()
